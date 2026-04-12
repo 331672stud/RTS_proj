@@ -1,2 +1,6 @@
 *.osm*
 .idea
+/build
+/.vscode
+/.cache
+/bin

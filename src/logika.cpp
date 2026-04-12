@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <osmium/handler.hpp>
 #include <osmium/io/any_input.hpp>
 #include <osmium/io/reader.hpp>
