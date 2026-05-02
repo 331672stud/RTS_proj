@@ -1,16 +1,15 @@
 export module app.tasks;
 
-import core.task;
 import app.context;
 
-// High priority: validation / safety
-export void taskValidate(TaskContext&){}
+export void taskSamplePosition(TaskContext& ctx);   // polluje gps
 
-// Medium: local replanning trigger
-export void taskLocalReplan(TaskContext&){}
+export void taskNavigationState(TaskContext& ctx);  // aktualizacja GUI
 
-// Low: global optimization trigger
-export void taskGlobalReplan(TaskContext&){}
+export void taskLocalReplan(TaskContext& ctx); //aktualizacja pobliskiej ścieżki (typu 100 metrów czy coś)
 
-// Periodic state update
-export void taskUpdateState(TaskContext&){}
+export void taskGlobalReplan(TaskContext& ctx); //globalna aktualizacja całej trasy
+
+export void taskPeriodicRouteCheck(TaskContext& ctx); // porównanie trasy dotychczasowej z nowo wyliczoną
+
+export void taskWatchdog(TaskContext& ctx);           // watchdog

@@ -21,6 +21,7 @@ target_sources(rts_proj
         src/core/event/event.ixx
         src/core/queue/queue.ixx
         src/core/scheduler/scheduler.ixx
+        src/core/eventData/eventData.ixx
 
         src/app/context/context.ixx
         src/app/dispatcher/dispatcher.ixx

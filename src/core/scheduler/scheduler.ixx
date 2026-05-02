@@ -5,6 +5,7 @@ module;
 
 export module core.scheduler;
 
+import app.dispatcher;
 import core.task;
 import core.queue;
 import core.event;
@@ -23,15 +24,20 @@ public:
         runTasks();
     }
 
-    EventQueue<QueueSize>& getEventQueue() { return queue; }
+    EventQueue<QueueSize>& getEventQueue()
+    { 
+        return queue; 
+    }
 
 private:
-    void processEvents(){
+    void processEvents()
+    {
         while(auto e = queue.pop()){
             dispatchEvent(context, *e);
         }
     }
-    void runTasks(){
+    void runTasks()
+    {
         for(size_t i = 0; i < task_count; ++i){
             auto& t = tasks[i];
             if(current_tick >= t.next_run){

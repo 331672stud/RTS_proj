@@ -22,6 +22,7 @@ class EventQueue {
             buffer[tail] = e;
             tail = (tail + 1) % Capacity;
             size++;
+            return true;
         }   
         std::optional<Event> pop(){
             if (size == 0) {
@@ -31,6 +32,7 @@ class EventQueue {
             Event e = buffer[head];
             head = (head + 1) % Capacity;
             size--;
+            return e;
         }
     private:
         std::array<Event, Capacity> buffer;

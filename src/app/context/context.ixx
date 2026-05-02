@@ -2,14 +2,12 @@ export module app.context;
 
 import core.event;
 
-export struct TaskContext {
-    // USER STATE (no logic here)
-
-    // Event handlers (to be implemented elsewhere)
-    void onPositionUpdate(void* data){}
-    void onTrafficUpdate(void* data){}
-    void onRoadBlocked(void* data){}
-
-    void requestLocalReplan(){}
-    void requestGlobalReplan(){}
+export struct TaskContext {    
+    void onGraphUpdate(void* data);          // aktualizacja grafu (wypadki, itd)
+    void onOffRouteDetected(void* data);     // wyznacza nową trasę
+    
+    void requestLocalReplan();
+    void requestGlobalReplan();
+    void requestOffRouteWarning();            // powiadamia użytkownika
+    void requestPositionUpdate();
 };

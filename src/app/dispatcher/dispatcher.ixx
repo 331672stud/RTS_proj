@@ -5,20 +5,11 @@ import app.context;
 
 export void dispatchEvent(TaskContext& ctx, const Event& e) {
     switch (e.type) {
-        case EventType::PositionUpdate:
-            ctx.onPositionUpdate(e.data);
+        case EventType::GraphUpdate:
+            ctx.onGraphUpdate(e.data);
             break;
-        case EventType::TrafficUpdate:
-            ctx.onTrafficUpdate(e.data);
-            break;
-        case EventType::RoadBlocked:
-            ctx.onRoadBlocked(e.data);
-            break;
-        case EventType::ReplanRequest:
-            ctx.requestLocalReplan();
-            break;
-        case EventType::GlobalReplanRequest:
-            ctx.requestGlobalReplan();
+        case EventType::OffRouteDetected:
+            ctx.onOffRouteDetected(e.data);
             break;
     }
 }

@@ -8,11 +8,8 @@ import core.time;
  * 
  */
 export enum class EventType {
-    SensorRead, //procesowanie otrzymanych danych
-    PositionUpdate, //na aktualizacje pozycji na mapie
-    PositionWarn, //Ostrzeżenie o opuszczeniu trasy
-    TrafficUpdate, //update dotyczycący trasy
-    ReplanRoute //rekalkulacja trasy
+    GraphUpdate,       // Aktualizacja grafu
+    OffRouteDetected   // gdy pozycja po za trasą
 };
 
 /**
