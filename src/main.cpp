@@ -1,14 +1,15 @@
-#include <thread>
-
 import core.scheduler;
 import app.context;
 import app.tasks;
 import system.config;
+import socket.eventReceiver;
 
 //to będzie trzeba zastąpić executable z QT
 
 
 int main() {
+    eventReceiver receiver;
+
     TaskContext ctx; //stan aplikacji
     Scheduler<TaskContext, MAX_TASKS, EVENT_QUEUE_SIZE> scheduler(ctx); //nasz organizator
 
@@ -20,9 +21,6 @@ int main() {
     scheduler.addTask({taskGlobalReplan, PRIORITY_LOW, 500, 20});
     scheduler.addTask({taskPeriodicRouteCheck, PRIORITY_LOW, 2000, 5});
     scheduler.addTask({taskWatchdog, PRIORITY_LOW, 5000, 15});
-
-    std::thread tcp_thread(tcp_server_thread, 12345);
-    tcp_thread.detach();  // or keep a handle to join later
 
     while (true) { //pętla działania
         scheduler.tick();

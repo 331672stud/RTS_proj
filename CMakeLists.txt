@@ -7,7 +7,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(rts_proj
-    src/main.cpp)
+    src/main.cpp
+        src/socket/eventReceiver/eventReceiver.ixx
+)
 
 target_sources(rts_proj
     PRIVATE

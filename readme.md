@@ -1,1 +1,1 @@
-wymaga libosmium
+-
