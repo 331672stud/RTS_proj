@@ -1,1 +1,1 @@
--
+-powinno się mieć zainstalowane simdjson-devel  (obsługuje jsony chyba najszybciej ze wszystkich bibliotek)

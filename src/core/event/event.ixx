@@ -19,5 +19,7 @@ export enum class EventType {
 export struct Event {
     EventType type;
     Tick timestamp;
-    void* data; 
+    void* data;
+
+     Event() = default;
 };

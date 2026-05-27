@@ -32,7 +32,7 @@ class EventQueue {
             Event e = buffer[head];
             head = (head + 1) % Capacity;
             size--;
-            return e;
+            return  {std::move(e)};
         }
     private:
         std::array<Event, Capacity> buffer;

@@ -1,4 +1,4 @@
-export module eventReceiver;
+module;
 
 #include <iostream>
 #include <thread>
@@ -6,14 +6,17 @@ export module eventReceiver;
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-
+//TO TRZEBA POBRAĆ
 #include <simdjson.h>
 
+export module socket.eventReceiver;
+
+import core.event;
+import core.time;
+import core.queue;
+
 // Forward declarations – adapt to your actual types
-struct Event;
-enum class EventType { GraphUpdate /* , others */ };
 struct GraphUpdateData { uint64_t u, v; double new_weight; };
-extern void push_event_to_queue(const Event& e);  // pushes to your scheduler's queue
 
 // ----------------------------------------------------------------------
 // TCP server thread using simdjson
@@ -118,10 +121,10 @@ void tcp_server_thread(int port) {
                 // Build your internal event
                 Event e;
                 e.type = EventType::GraphUpdate;
-                e.timestamp = Tick::now();   // your clock
-                GraphUpdateData* data = new GraphUpdateData{u, v, new_weight};
+                e.timestamp = now();   // your clock
+                auto* data = new GraphUpdateData{u, v, new_weight};
                 e.data = data;
-                push_event_to_queue(e);
+                //EventQueue.push(e);
                 std::cout << "[TCP] Graph update: edge (" << u << "," << v << ") weight=" << new_weight << std::endl;
             }
             else {

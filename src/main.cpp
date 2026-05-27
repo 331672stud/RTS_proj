@@ -8,7 +8,6 @@ import socket.eventReceiver;
 
 
 int main() {
-    eventReceiver receiver;
 
     TaskContext ctx; //stan aplikacji
     Scheduler<TaskContext, MAX_TASKS, EVENT_QUEUE_SIZE> scheduler(ctx); //nasz organizator
