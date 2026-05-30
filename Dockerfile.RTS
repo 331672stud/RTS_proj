@@ -1,18 +1,8 @@
-# Dockerfile.RTS
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    g++-14 \
-    gdb \
-    libsimdjson-dev \
-    ninja-build \
+    build-essential cmake gdb ninja-build git clang libsimdjson-dev \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CC=gcc-14 CXX=g++-14
-
-RUN useradd -m -s /bin/bash devuser
-USER devuser
-
+ENV CC=clang-21 CXX=clang++-21
 WORKDIR /workspace/proj

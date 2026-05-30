@@ -2,7 +2,6 @@ module;
 
 #include <iostream>
 #include <thread>
-#include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>

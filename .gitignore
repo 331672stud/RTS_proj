@@ -1,7 +1,9 @@
 *.osm*
 .idea
 */build
+*/cmake-build-debug
 */.vscode
 */.cache
 */bin
 *.pkl
+.devcontainer

@@ -4,12 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile.RTS
     volumes:
-      - ./proj:/workspace/proj # C++ source live-mounted
-      - rts_build:/workspace/build # persist build artefacts inside container
+      - ./proj:/workspace/proj
+      - rts_build:/workspace/build
     working_dir: /workspace/proj
-    command: tail -f /dev/null # keep container alive for dev
-    ports:
-      - "12345:12345" # expose RTS server port
+    command: tail -f /dev/null
     networks:
       - app-net
 
@@ -18,7 +16,8 @@ services:
       context: .
       dockerfile: Dockerfile.Sim
     volumes:
-      - ./proj/SimScript:/app
+      - ./proj/simScript:/app
+      - ./maps:/app/maps
     working_dir: /app
     command: tail -f /dev/null
     stdin_open: true
