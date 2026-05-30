@@ -6,10 +6,11 @@ import socket.eventReceiver;
 
 //to będzie trzeba zastąpić executable z QT
 
-
 int main() {
 
-    TaskContext ctx; //stan aplikacji
+    tcp_server_thread(12345);
+
+    /*TaskContext ctx; //stan aplikacji
     Scheduler<TaskContext, MAX_TASKS, EVENT_QUEUE_SIZE> scheduler(ctx); //nasz organizator
 
     //tu powinniśmy wczytać dane startowe
@@ -23,5 +24,7 @@ int main() {
 
     while (true) { //pętla działania
         scheduler.tick();
-    }
+    }*/
+
+    return 0;
 }

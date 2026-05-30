@@ -6,30 +6,23 @@ module;
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-//TO TRZEBA POBRAĆ
+#include <vector>
+#include <utility>
 #include <simdjson.h>
 
 export module socket.eventReceiver;
 
-import core.event;
-import core.time;
-import core.queue;
-
-// Forward declarations – adapt to your actual types
-struct GraphUpdateData { uint64_t u, v; double new_weight; };
-
 // ----------------------------------------------------------------------
-// TCP server thread using simdjson
+// TCP server thread – czyta jsona na porcie i na razie tylko printuje
 // ----------------------------------------------------------------------
-void tcp_server_thread(int port) {
+export void tcp_server_thread(int port) {
     int server_fd, client_fd;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[65536];          // large buffer for incoming data
-    std::string remaining;       // partial line storage
+    char buffer[65536];
+    std::string remaining;
 
-    // Create socket
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
 
@@ -53,7 +46,7 @@ void tcp_server_thread(int port) {
     }
     std::cout << "[TCP] Simulator connected." << std::endl;
 
-    simdjson::ondemand::parser parser;   // reusable parser
+    simdjson::dom::parser parser;
 
     while (true) {
         ssize_t bytes = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
@@ -67,14 +60,15 @@ void tcp_server_thread(int port) {
             remaining.erase(0, pos + 1);
             if (line.empty()) continue;
 
-            // Parse with simdjson
-            auto doc = parser.iterate(line);   // on‑demand parsing
-            if (doc.error()) {
-                std::cerr << "[TCP] JSON parse error: " << doc.error() << std::endl;
+            // Parse JSON line
+            simdjson::dom::element doc;
+            auto error = parser.parse(line).get(doc);
+            if (error) {
+                std::cerr << "[TCP] JSON parse error: " << error << std::endl;
                 continue;
             }
 
-            // Extract "type" field
+            // Get "type" field
             std::string_view type;
             auto type_error = doc["type"].get_string().get(type);
             if (type_error) {
@@ -83,49 +77,47 @@ void tcp_server_thread(int port) {
             }
 
             if (type == "waypoints") {
-                auto coords_array = doc["coordinates"];
-                if (coords_array.error()) {
+                simdjson::dom::array coords_array;
+                auto arr_err = doc["coordinates"].get_array().get(coords_array);
+                if (arr_err) {
                     std::cerr << "[TCP] Missing 'coordinates' array" << std::endl;
                     continue;
                 }
                 std::vector<std::pair<double, double>> waypoints;
                 for (auto point : coords_array) {
                     double lat, lon;
-                    auto array = point.get_array();
-                    if (array.at(0).get_double().get(lat) || array.at(1).get_double().get(lon)) {
-                        std::cerr << "[TCP] Invalid coordinate format" << std::endl;
-                        break;
+                    simdjson::dom::array point_arr;
+                    if (point.get_array().get(point_arr)) continue;
+                    if (point_arr.at(0).get_double().get(lat) || point_arr.at(1).get_double().get(lon)) {
+                        std::cerr << "[TCP] Invalid coordinate format, skipping point" << std::endl;
+                        continue;
                     }
                     waypoints.emplace_back(lat, lon);
                 }
-                std::cout << "[TCP] Received " << waypoints.size() << " waypoints." << std::endl;
-                // TODO: call your route planning function (or push an internal event)
-                // computeInitialRoute(waypoints);
+                std::cout << "[TCP] Waypoints (" << waypoints.size() << " points):";
+                for (auto& [lat, lon] : waypoints) {
+                    std::cout << " (" << lat << "," << lon << ")";
+                }
+                std::cout << std::endl;
             }
             else if (type == "graph_update") {
-                auto edge_array = doc["edge"];
-                auto weight_val = doc["new_weight"];
-                if (edge_array.error() || weight_val.error()) {
-                    std::cerr << "[TCP] Missing 'edge' or 'new_weight' field" << std::endl;
+                // Extract edge array
+                simdjson::dom::array edge_arr;
+                if (doc["edge"].get_array().get(edge_arr)) {
+                    std::cerr << "[TCP] Missing or invalid 'edge' array" << std::endl;
                     continue;
                 }
                 uint64_t u, v;
-                double new_weight;
-                if (edge_array.at(0).get_uint64().get(u) ||
-                    edge_array.at(1).get_uint64().get(v) ||
-                    weight_val.get_double().get(new_weight)) {
-                    std::cerr << "[TCP] Invalid edge or weight format" << std::endl;
+                if (edge_arr.at(0).get_uint64().get(u) || edge_arr.at(1).get_uint64().get(v)) {
+                    std::cerr << "[TCP] Invalid edge format (u, v not uint64)" << std::endl;
                     continue;
                 }
-
-                // Build your internal event
-                Event e;
-                e.type = EventType::GraphUpdate;
-                e.timestamp = now();   // your clock
-                auto* data = new GraphUpdateData{u, v, new_weight};
-                e.data = data;
-                //EventQueue.push(e);
-                std::cout << "[TCP] Graph update: edge (" << u << "," << v << ") weight=" << new_weight << std::endl;
+                double new_weight;
+                if (doc["new_weight"].get_double().get(new_weight)) {
+                    std::cerr << "[TCP] Invalid or missing 'new_weight'" << std::endl;
+                    continue;
+                }
+                std::cout << "[TCP] Graph update: edge (" << u << "," << v << ") new weight = " << new_weight << std::endl;
             }
             else {
                 std::cerr << "[TCP] Unknown message type: " << type << std::endl;
