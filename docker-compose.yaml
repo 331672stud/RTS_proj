@@ -5,9 +5,9 @@ services:
       dockerfile: Dockerfile.RTS
     volumes:
       - ./proj:/workspace/proj
-      - rts_build:/workspace/build
     working_dir: /workspace/proj
-    command: tail -f /dev/null
+    depends_on:
+      - sim
     networks:
       - app-net
 
@@ -17,18 +17,9 @@ services:
       dockerfile: Dockerfile.Sim
     volumes:
       - ./proj/simScript:/app
-      - ./maps:/app/maps
     working_dir: /app
-    command: tail -f /dev/null
-    stdin_open: true
-    tty: true
-    depends_on:
-      - rts
     networks:
       - app-net
-
-volumes:
-  rts_build:
 
 networks:
   app-net:

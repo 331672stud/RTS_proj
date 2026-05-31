@@ -1,6 +1,4 @@
-powinno się mieć zainstalowane simdjson-devel  (obsługuje jsony chyba najszybciej ze wszystkich bibliotek)
-
-założenie jest takie że uruchamia się rts, simScript.py (Dependency: pip install osmium networkx) który wysyła losowe punkty, i okazjonalnie aktualizacje dotyczące wag.
+założenie jest takie że uruchamia się rts, simScript.py który wysyła losowe punkty, i okazjonalnie aktualizacje dotyczące wag.
 
 (w kontenerze albo na hoście)
 cmake -B build -G Ninja
@@ -9,3 +7,9 @@ cmake --build build
 
 (w kontenerze albo na hoście bez --host rts)
 python simScript.py maps/Warsaw.osm.pbf --host rts
+
+KONTENERY POWINNY TERAZ SAME KOMPILOWAĆ I ODPALAĆ SWOJE RZECZY
+
+RTS CZEKA NA SIMSCRIPT BO ON CACHE'UJE MU MAPĘ W .PBF
+
+NA RAZIE TRZEBA W MAIN ZMIENIĆ GDZIE OTWIERA .NAV (MOŻEMY PÓŹNIEJ DAĆ JAKO ARGUMENT)

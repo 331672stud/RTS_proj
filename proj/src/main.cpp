@@ -3,10 +3,21 @@ import app.context;
 import app.tasks;
 import system.config;
 import socket.eventReceiver;
+import system.nav_graph;
+
+#include <iostream>
 
 //to będzie trzeba zastąpić executable z QT
 
 int main() {
+    try
+    {
+        //NavGraph graph("/workspace/app/simScript/maps/Warsaw.nav"); //powinno działać w kontenerze
+        NavGraph graph("../simScript/maps/Warsaw.nav"); //powinno działać natywnie
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
 
     tcp_server_thread(12345);
 

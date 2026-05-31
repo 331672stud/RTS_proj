@@ -32,6 +32,7 @@ target_sources(rts_proj
         src/app/tasks/tasks.ixx
 
         src/system/config/config.ixx
+        src/system/nav_graph/nav_graph.ixx
 
         src/socket/eventReceiver/eventReceiver.ixx
 )
