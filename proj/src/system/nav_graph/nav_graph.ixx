@@ -19,7 +19,7 @@ export module system.nav_graph;
 
 export class NavGraph {
 public:
-    static constexpr double MIN_LAT = 51.4010243, MAX_LAT = 52.9148154, MIN_LON = 19.1114525, MAX_LON = 22.868352;
+    static constexpr double MIN_LAT = 52.0201443, MAX_LAT = 52.4830737, MIN_LON = 20.6117986, MAX_LON = 21.4710822;
 
     // Throws std::runtime_error on failure
     NavGraph(const std::string& nav_path);

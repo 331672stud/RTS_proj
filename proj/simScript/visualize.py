@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-Visualize the filtered road network (largest connected component) from .pkl cache.
+Fast overview of large road network – plots edges directly with matplotlib.
 """
 
 import argparse
 import pickle
+import random
 import matplotlib.pyplot as plt
-import networkx as nx
 
 def main():
-    parser = argparse.ArgumentParser(description="Visualize cached road graph")
+    parser = argparse.ArgumentParser(description="Fast road network visualization")
     parser.add_argument("pbf_file", help="Path to .osm.pbf (will look for _graph.pkl)")
+    parser.add_argument("--sample", type=float, default=0.01,
+                        help="Fraction of edges to draw (0.0-1.0). Default 0.01 = 1%%")
     parser.add_argument("--save", help="Save plot to file instead of showing")
     args = parser.parse_args()
 
@@ -20,21 +22,37 @@ def main():
             bounds, edges_list, G = pickle.load(f)
     except FileNotFoundError:
         print(f"Cache not found at {cache_path}")
-        print("Run the simulator first to generate the cache.")
         return
 
-    print(f"Loaded graph: {len(G.nodes)} nodes, {len(G.edges)} edges")
-    print(f"Bounds: {bounds}")
+    total_nodes = len(G.nodes)
+    total_edges = len(G.edges)
+    print(f"Loaded: {total_nodes} nodes, {total_edges} edges")
+
+    # Sample edges
+    sample_size = max(1, int(total_edges * args.sample))
+    all_edges = list(G.edges())
+    if sample_size < total_edges:
+        sample_edges = random.sample(all_edges, sample_size)
+    else:
+        sample_edges = all_edges
+    print(f"Drawing {len(sample_edges)} edges ({args.sample*100:.1f}%%)")
+
+    # Pre‑fetch coordinates (much faster than repeated lookups)
+    x_coords = []
+    y_coords = []
+    for u, v in sample_edges:
+        xu = G.nodes[u]['x']
+        yu = G.nodes[u]['y']
+        xv = G.nodes[v]['x']
+        yv = G.nodes[v]['y']
+        # Add segment (NaN separates lines)
+        x_coords.extend([xu, xv, None])
+        y_coords.extend([yu, yv, None])
 
     # Plot
     plt.figure(figsize=(12, 10))
-    # Get node coordinates
-    pos = {node: (data['x'], data['y']) for node, data in G.nodes(data=True)}
-    # Draw edges
-    nx.draw_networkx_edges(G, pos, alpha=0.5, edge_color='gray', width=0.5)
-    # Draw nodes (optional, can be slow for large graphs)
-    # nx.draw_networkx_nodes(G, pos, node_size=1, node_color='blue', alpha=0.6)
-    plt.title(f"Road network (largest component) – {len(G.nodes)} nodes, {len(G.edges)} edges")
+    plt.plot(x_coords, y_coords, color='gray', linewidth=1, alpha=1)
+    plt.title(f"Road network – {total_nodes} nodes, {total_edges} edges (showing {len(sample_edges)} edges)")
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
     plt.axis('equal')
