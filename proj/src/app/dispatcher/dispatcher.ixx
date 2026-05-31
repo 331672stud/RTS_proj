@@ -11,5 +11,8 @@ export void dispatchEvent(TaskContext& ctx, const Event& e) {
         case EventType::OffRouteDetected:
             ctx.onOffRouteDetected(e.data);
             break;
+        case EventType::RouteNodesUpdate:
+            ctx.onRouteNodesUpdate(e.data);
+            break;
     }
 }

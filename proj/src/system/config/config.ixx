@@ -7,7 +7,7 @@ export module system.config;
 
 import core.task;
 
-export constexpr int TICK_MS = 10;   //100Hz
+export constexpr int TICK_MS = 100;   //10 = 100Hz
 
 export constexpr size_t MAX_TASKS = 16;
 export constexpr size_t EVENT_QUEUE_SIZE = 128;

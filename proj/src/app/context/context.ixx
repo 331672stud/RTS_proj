@@ -29,9 +29,17 @@ export struct TaskContext {
     // Constructor
     TaskContext(NavGraph&& g): graph(std::move(g)) {}
 
-    void onGraphUpdate(void* data) {}
+    void onGraphUpdate(void* data) {
+        printf("onGraphUpdate\n");
+    } //na aktualizacji wag
 
-    void onOffRouteDetected(void* data){}     // wyznacza nową trasę
+    void onOffRouteDetected(void* data) {
+        printf("onOffRouteDetected\n");
+    }     // wyznacza nową trasę
+
+    void onRouteNodesUpdate(void* data) {
+        printf("onRouteNodesUpdate\n");
+    } //dodanie default waypointów (można rozwinąć o aktualizację poprzednich)
 
     // Request methods (push internal events)
     void requestLocalReplan() { /* push LocalReplanRequest */ }

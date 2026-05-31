@@ -8,6 +8,7 @@ import core.time;
  * 
  */
 export enum class EventType {
+    RouteNodesUpdate,
     GraphUpdate,       // Aktualizacja grafu
     OffRouteDetected   // gdy pozycja po za trasą
 };

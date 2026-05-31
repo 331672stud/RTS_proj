@@ -22,16 +22,16 @@ int main() {
     TaskContext ctx(std::move(graph));
     Scheduler<TaskContext, MAX_TASKS, EVENT_QUEUE_SIZE> scheduler(ctx);
     try {
-        scheduler.addTask({taskSamplePosition,      PRIORITY_HIGH, 10,  0});   // period 10 ticks (~100ms), offset 0
-        scheduler.addTask({taskNavigationState,     PRIORITY_HIGH, 50,  10});   // 500ms
-        scheduler.addTask({taskLocalReplan,         PRIORITY_HIGH, 0,   0});   // one‑shot, triggered by events
-        scheduler.addTask({taskGlobalReplan,        PRIORITY_HIGH, 0,   0});   // one‑shot
-        scheduler.addTask({taskPeriodicRouteCheck,  PRIORITY_HIGH, 300, 5});   // 3000ms
-        scheduler.addTask({taskWatchdog,            PRIORITY_HIGH, 500, 15});   // 5000ms
+        scheduler.addTask({taskSamplePosition,      PRIORITY_HIGH, 10,  0}); // period 10 ticks (~100ms), offset 0
+        scheduler.addTask({taskNavigationState,     PRIORITY_HIGH, 50,  10});// 500ms
+        scheduler.addTask({taskLocalReplan,         PRIORITY_HIGH, 0,   0}); // one‑shot, triggered by events
+        scheduler.addTask({taskGlobalReplan,        PRIORITY_HIGH, 0,   0}); // one‑shot
+        scheduler.addTask({taskPeriodicRouteCheck,  PRIORITY_HIGH, 300, 5}); // 3000ms
+        scheduler.addTask({taskWatchdog,            PRIORITY_HIGH, 500, 15});// 5000ms
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
     }
-    std::thread tcp_thread(tcp_server_thread, 12345);
+    std::thread tcp_thread(tcp_server_thread, 12345, std::ref(scheduler.getEventQueue()));
     tcp_thread.detach();   // let it run independently
 
     while (true) {
