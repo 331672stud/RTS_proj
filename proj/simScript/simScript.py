@@ -56,10 +56,10 @@ class PBFGraphBuilder(osmium.SimpleHandler):
                 a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlam/2)**2
                 dist = 2 * R * asin(sqrt(a))
                 time_sec = dist / speed_mps if speed_mps > 0 else 0.001
-                self.graph.add_edge(u, v, length=time_sec, geometry=None)
+                self.graph.add_edge(u, v, length=time_sec, geometry=[[lat1, lon1], [lat2, lon2]])
                 # Dodaj również krawędź w przeciwnym kierunku (dla ruchu dwukierunkowego)
                 if 'oneway' not in tags or tags['oneway'] != 'yes':
-                    self.graph.add_edge(v, u, length=time_sec, geometry=None)
+                    self.graph.add_edge(v, u, length=time_sec, geometry=[[lat2, lon2], [lat1, lon1]])
 
 def get_bounds_and_edges_from_pbf(pbf_path: str, cache_path: str = None):
     """
@@ -88,7 +88,7 @@ def get_bounds_and_edges_from_pbf(pbf_path: str, cache_path: str = None):
         'east': max(lons),
         'west': min(lons)
     }
-    edges_list = list(G.edges)   
+    edges_list = list(G.edges(data=True))
     
     # Save to cache
     print(f"Saving cached graph to {cache_path}...")
@@ -110,7 +110,7 @@ def main():
     parser.add_argument("--points", "-n", type=int, default=5)
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=12345)
-    parser.add_argument("--interval", type=float, default=2.0)
+    parser.add_argument("--interval", type=float, default=0.01)
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
 
@@ -134,16 +134,18 @@ def main():
 
     try:
         while True:
+        # for edge in edges:
             time.sleep(args.interval)
             edge = random.choice(edges)
-            u, v = edge
+            u, v, data = edge
             new_weight = random.uniform(1.0, 30.0)
             send_message(sock, {
                 "type": "graph_update",
                 "edge": [u, v],
-                "new_weight": new_weight
+                "new_weight": new_weight,
+                "geometry": data["geometry"]
             })
-            print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
+            # print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
     except KeyboardInterrupt:
         print("Stopped.")
     finally:
