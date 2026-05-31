@@ -11,6 +11,7 @@ find_package(simdjson REQUIRED)
 
 add_executable(rts_proj
     src/main.cpp
+        src/app/astar/astar.ixx
 )
 
 target_sources(rts_proj
@@ -30,6 +31,7 @@ target_sources(rts_proj
         src/app/context/context.ixx
         src/app/dispatcher/dispatcher.ixx
         src/app/tasks/tasks.ixx
+        src/app/astar/astar.ixx
 
         src/system/config/config.ixx
         src/system/nav_graph/nav_graph.ixx

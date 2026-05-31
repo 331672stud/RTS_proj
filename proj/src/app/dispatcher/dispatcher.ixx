@@ -14,5 +14,8 @@ export void dispatchEvent(TaskContext& ctx, const Event& e) {
         case EventType::RouteNodesUpdate:
             ctx.onRouteNodesUpdate(e.data);
             break;
+        case EventType::VehicleUpdate:
+            ctx.onVehicleUpdate(e.data);
+            break;
     }
 }

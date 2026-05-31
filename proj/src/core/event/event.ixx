@@ -10,6 +10,7 @@ import core.time;
 export enum class EventType {
     RouteNodesUpdate,
     GraphUpdate,       // Aktualizacja grafu
+    VehicleUpdate,
     OffRouteDetected   // gdy pozycja po za trasą
 };
 
