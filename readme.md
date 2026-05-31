@@ -8,7 +8,7 @@ cmake --build build
 (w kontenerze albo na hoście bez --host rts)
 python simScript.py maps/Warsaw.osm.pbf --host rts
 
-KONTENERY POWINNY TERAZ SAME KOMPILOWAĆ I ODPALAĆ SWOJE RZECZY
+NA RAZIE DALEJ TRZEBA SAMEMU ODPALAĆ W KONTENERACH
 
 RTS CZEKA NA SIMSCRIPT BO ON CACHE'UJE MU MAPĘ W .PBF
 
