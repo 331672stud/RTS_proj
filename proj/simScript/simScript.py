@@ -1,6 +1,7 @@
 """
 Symulator trasy dla SCR - używa pyosmium do bezpośredniego odczytu .osm.pbf.
 Dodatkowo cacheuje binarny plik .pkl oraz .nav z węzłami i krawędziami.
+Tylko największa spójna składowa (weakly connected) jest zachowana.
 """
 
 import osmium
@@ -42,7 +43,6 @@ class PBFGraphBuilder(osmium.SimpleHandler):
         for i in range(len(node_ids) - 1):
             u = node_ids[i]
             v = node_ids[i+1]
-            # Ensure nodes exist (they should, but just in case)
             if u not in self.graph or v not in self.graph:
                 continue
             lon1 = self.graph.nodes[u]['x']
@@ -62,15 +62,18 @@ class PBFGraphBuilder(osmium.SimpleHandler):
             if 'oneway' not in tags or tags['oneway'] != 'yes':
                 self.graph.add_edge(v, u, length=time_sec)
 
+def keep_largest_component(G):
+    """Zwraca podgraf z największą słabo spójną składową."""
+    # Dla grafu skierowanego używamy weakly_connected_components
+    components = list(nx.weakly_connected_components(G))
+    if not components:
+        return G
+    largest = max(components, key=len)
+    return G.subgraph(largest).copy()
+
 def save_nav_file(pbf_path: str, G: nx.DiGraph, default_speed_ms: float = 13.8889):
     """
-    Zapisz graf do binarki .nav.
-
-    Args:
-        pbf_path: Ścieżka do mapy .osm.pbf (output .nav zastępuje suffix)
-        G: graf skierowany z node'ami x lon i y lat,
-           krawędzie mające 'length' (w metrach).
-        default_speed_ms: prędkość w metrach na sekundę (13.8889 = 50 km/h)
+    Zapisz graf do binarki .nav (tylko największa składowa).
     """
     nav_path = pbf_path.replace('.osm.pbf', '.nav')
     print(f"Writing {nav_path} ...")
@@ -115,9 +118,7 @@ def save_nav_file(pbf_path: str, G: nx.DiGraph, default_speed_ms: float = 13.888
         edge_weights[pos] = w
         current_pos[u_idx] += 1
 
-
     edge_map_entries = []
-
     current_pos = edge_offsets[:-1].copy()
     edge_idx_by_uv = {}
     for u_idx, v_idx in zip(edges_u, edges_v):
@@ -148,7 +149,7 @@ def save_nav_file(pbf_path: str, G: nx.DiGraph, default_speed_ms: float = 13.888
         cell = cy * grid_width + cx
         cell_counts[cell] += 1
     cell_offsets[1:] = np.cumsum(cell_counts)
-    cell_nodes = np.zeros(node_count, dtype=np.uint32)  # enough space
+    cell_nodes = np.zeros(node_count, dtype=np.uint32)
     current_pos = cell_offsets[:-1].copy()
     for idx in range(node_count):
         lon = lons[idx]
@@ -168,25 +169,25 @@ def save_nav_file(pbf_path: str, G: nx.DiGraph, default_speed_ms: float = 13.888
         f.write(struct.pack('dddd', min_lat, max_lat, min_lon, max_lon))
         f.write(struct.pack('dII', cell_size, grid_width, grid_height))
 
-        f.write(node_osm_ids.tobytes())                 # uint64
-        f.write(lats.tobytes())                        # double
-        f.write(lons.tobytes())                        # double
-        f.write(edge_offsets.tobytes())                # uint32
-        f.write(edge_targets.tobytes())                # uint32
-        f.write(edge_weights.tobytes())                # double
+        f.write(node_osm_ids.tobytes())
+        f.write(lats.tobytes())
+        f.write(lons.tobytes())
+        f.write(edge_offsets.tobytes())
+        f.write(edge_targets.tobytes())
+        f.write(edge_weights.tobytes())
         edge_map_array = np.empty(edge_count, dtype=[('u', np.uint32), ('v', np.uint32), ('idx', np.uint32)])
         edge_map_array['u'] = edge_map_u
         edge_map_array['v'] = edge_map_v
         edge_map_array['idx'] = edge_map_idx
         f.write(edge_map_array.tobytes())
-        f.write(cell_offsets.tobytes())                # uint32, length num_cells+1
-        f.write(cell_nodes[:np.sum(cell_counts)].tobytes())  # uint32
+        f.write(cell_offsets.tobytes())
+        f.write(cell_nodes[:np.sum(cell_counts)].tobytes())
 
-    print(f"Saved {node_count} nodes, {edge_count} edges. Grid: {grid_width}x{grid_height} cells.")
+    print(f"Saved {node_count} nodes, {edge_count} edges (largest component). Grid: {grid_width}x{grid_height} cells.")
 
 def get_bounds_and_edges_from_pbf(pbf_path: str, cache_path: str = None):
     """
-    Wczytuje zcache'owaną mapę, albo z .pbf i buduje cached wersję
+    Wczytuje zcache'owaną mapę (tylko największą składową), albo z .pbf i buduje cached wersję.
     """
     if cache_path is None:
         cache_path = pbf_path.replace('.osm.pbf', '_graph.pkl')
@@ -201,9 +202,14 @@ def get_bounds_and_edges_from_pbf(pbf_path: str, cache_path: str = None):
     print(f"Processing PBF (first time, this will take a while): {pbf_path}...")
     handler = PBFGraphBuilder()
     handler.apply_file(pbf_path)
-    G = handler.graph
+    G_full = handler.graph
+    print(f"Full graph: {len(G_full.nodes)} nodes, {len(G_full.edges)} edges")
 
-    # Compute bounds from graph node coordinates
+    # Keep only the largest weakly connected component
+    G = keep_largest_component(G_full)
+    print(f"Largest component: {len(G.nodes)} nodes, {len(G.edges)} edges")
+
+    # Compute bounds from filtered graph
     all_lons = [data['x'] for _, data in G.nodes(data=True)]
     all_lats = [data['y'] for _, data in G.nodes(data=True)]
     bounds = {
@@ -212,12 +218,12 @@ def get_bounds_and_edges_from_pbf(pbf_path: str, cache_path: str = None):
         'east': max(all_lons),
         'west': min(all_lons)
     }
-    
+
     edges_list = list(G.edges)
 
+    # Save .nav and cache
     save_nav_file(pbf_path, G)
 
-    # Save to cache
     print(f"Saving cached graph to {cache_path}...")
     with open(cache_path, 'wb') as f:
         pickle.dump((bounds, edges_list, G), f)
@@ -232,10 +238,6 @@ def send_message(sock: socket.socket, msg: dict):
     sock.sendall((json.dumps(msg) + '\n').encode())
 
 def wait_for_server(host: str, port: int, timeout: float = 120.0, retry_interval: float = 5.0):
-    """
-    Czeka na aplikację rts na porcie.
-    Zwraca albo socket albo błąd na timeoucie
-    """
     start_time = time.time()
     while True:
         try:
@@ -246,12 +248,12 @@ def wait_for_server(host: str, port: int, timeout: float = 120.0, retry_interval
         except ConnectionRefusedError:
             elapsed = time.time() - start_time
             if elapsed >= timeout:
-                print(f"ERROR: Could not connect to {host}:{port} after {timeout} seconds. Is the RTS server running?")
+                print(f"ERROR: Could not connect to {host}:{port} after {timeout} seconds.")
                 sys.exit(1)
             print(f"Waiting for RTS server on {host}:{port}... (retry in {retry_interval}s)")
             time.sleep(retry_interval)
         except Exception as e:
-            print(f"Unexpected error while waiting for server: {e}")
+            print(f"Unexpected error: {e}")
             time.sleep(retry_interval)
 
 def main():
@@ -263,7 +265,7 @@ def main():
     parser.add_argument("--interval", type=float, default=2.0)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--server-timeout", type=float, default=30.0,
-                        help="Max seconds to wait for RTS server to become available")
+                        help="Max seconds to wait for RTS server")
     args = parser.parse_args()
 
     if args.seed:
@@ -271,12 +273,12 @@ def main():
 
     print(f"Loading PBF via pyosmium: {args.pbf_file} ...")
     bounds, edges, G = get_bounds_and_edges_from_pbf(args.pbf_file)
-    print(f"Bounds: {bounds}")
+    print(f"Bounds (largest component): {bounds}")
     print(f"Loaded {len(G.nodes)} nodes, {len(edges)} directed edges")
 
-    # Wait for the RTS server before generating waypoints
     sock = wait_for_server(args.host, args.port, timeout=args.server_timeout)
 
+    # Generate waypoints within bounds of the largest component
     waypoints = [random_coordinate(bounds) for _ in range(args.points)]
     print(f"Waypoints: {waypoints}")
 

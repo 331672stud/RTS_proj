@@ -11,6 +11,8 @@ export enum class EventType {
     RouteNodesUpdate,
     GraphUpdate,       // Aktualizacja grafu
     VehicleUpdate,
+    LocalReplanRequest,
+    GlobalReplanRequest,
     OffRouteDetected   // gdy pozycja po za trasą
 };
 

@@ -18,8 +18,8 @@ int main() {
         Scheduler<TaskContext, MAX_TASKS, EVENT_QUEUE_SIZE> scheduler(ctx);
         scheduler.addTask({taskSamplePosition,      PRIORITY_HIGH, 10,  0}); // period 10 ticks (~100ms), offset 0
         scheduler.addTask({taskNavigationState,     PRIORITY_HIGH, 50,  10});// 500ms
-        scheduler.addTask({taskLocalReplan,         PRIORITY_HIGH, 0,   0}); // one‑shot, triggered by events
-        scheduler.addTask({taskGlobalReplan,        PRIORITY_HIGH, 0,   0}); // one‑shot
+        //scheduler.addTask({taskLocalReplan,         PRIORITY_HIGH, 0,   0}); // one‑shot, triggered by events
+        //scheduler.addTask({taskGlobalReplan,        PRIORITY_HIGH, 0,   0}); // one‑shot
         scheduler.addTask({taskPeriodicRouteCheck,  PRIORITY_HIGH, 30, 5}); // 3000ms
         scheduler.addTask({taskWatchdog,            PRIORITY_HIGH, 50, 15});// 5000ms
         std::thread tcp_thread(tcp_server_thread, 12345, std::ref(scheduler.getEventQueue()));
