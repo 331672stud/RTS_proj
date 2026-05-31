@@ -21,6 +21,7 @@ export class NavGraph {
 public:
     // Throws std::runtime_error on failure
     NavGraph(const std::string& nav_path);
+    NavGraph();
     ~NavGraph();
 
     // Move only
@@ -172,6 +173,8 @@ NavGraph::NavGraph(const std::string& nav_path) {
     edge_offsets_.assign(edge_offsets_ptr_, edge_offsets_ptr_ + node_count_ + 1);
     edge_targets_.assign(edge_targets_ptr_, edge_targets_ptr_ + edge_count_);
 }
+
+NavGraph::NavGraph() = default;
 
 NavGraph::~NavGraph() {
     unmap();
