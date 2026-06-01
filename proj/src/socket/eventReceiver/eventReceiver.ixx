@@ -8,13 +8,18 @@ module;
 #include <vector>
 #include <utility>
 #include <simdjson.h>
+#include <tuple>
 
 export module socket.eventReceiver;
+
+import core.queue;
+import system.config;
+import core.event;
 
 // ----------------------------------------------------------------------
 // TCP server thread – czyta jsona na porcie i na razie tylko printuje
 // ----------------------------------------------------------------------
-export void tcp_server_thread(int port) {
+export void tcp_server_thread(int port, EventQueue<EVENT_QUEUE_SIZE>& eventQueue) {
     int server_fd, client_fd;
     struct sockaddr_in address;
     int opt = 1;
@@ -82,7 +87,7 @@ export void tcp_server_thread(int port) {
                     std::cerr << "[TCP] Missing 'coordinates' array" << std::endl;
                     continue;
                 }
-                std::vector<std::pair<double, double>> waypoints;
+                auto* coords = new std::vector<std::pair<double, double>>;
                 for (auto point : coords_array) {
                     double lat, lon;
                     simdjson::dom::array point_arr;
@@ -91,13 +96,17 @@ export void tcp_server_thread(int port) {
                         std::cerr << "[TCP] Invalid coordinate format, skipping point" << std::endl;
                         continue;
                     }
-                    waypoints.emplace_back(lat, lon);
+                    coords->emplace_back(lat, lon);
                 }
-                std::cout << "[TCP] Waypoints (" << waypoints.size() << " points):";
-                for (auto& [lat, lon] : waypoints) {
+                std::cout << "[TCP] Waypoints (" << coords->size() << " points):";
+                for (auto& [lat, lon] : *coords) {
                     std::cout << " (" << lat << "," << lon << ")";
                 }
                 std::cout << std::endl;
+                Event e;
+                e.type = EventType::RouteNodesUpdate;
+                e.data = coords;
+                eventQueue.push(e);
             }
             else if (type == "graph_update") {
                 // Extract edge array
@@ -117,6 +126,11 @@ export void tcp_server_thread(int port) {
                     continue;
                 }
                 std::cout << "[TCP] Graph update: edge (" << u << "," << v << ") new weight = " << new_weight << std::endl;
+                auto* data = new std::tuple{u, v, new_weight};
+                Event e;
+                e.type = EventType::GraphUpdate;
+                e.data = data;
+                eventQueue.push(e);
             }
             else {
                 std::cerr << "[TCP] Unknown message type: " << type << std::endl;

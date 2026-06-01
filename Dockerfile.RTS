@@ -6,3 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV CC=clang-21 CXX=clang++-21
 WORKDIR /workspace/proj
+
+#RUN cmake -B build -G Ninja && \
+#    cmake --build build
+
+#CMD ["./build/rts_proj"]
+
+CMD ["tail", "-f", "/dev/null"]

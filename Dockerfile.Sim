@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir osmium networkx
+RUN pip install --no-cache-dir osmium networkx numpy matplotlib
+
+#CMD ["python", "simScript.py", "maps/Warsaw.osm.pbf", "--host", "rts"]
 
 CMD ["tail", "-f", "/dev/null"]

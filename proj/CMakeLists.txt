@@ -65,10 +65,12 @@ target_sources(appQTmap
         src/core/eventData/eventData.ixx
 
         src/app/context/context.ixx
-        src/app/dispatcher/dispatcher.ixx
         src/app/tasks/tasks.ixx
+        src/app/astar/astar.ixx
+        src/app/navigationController/navigationController.ixx
 
         src/system/config/config.ixx
+        src/system/nav_graph/nav_graph.ixx
 
         src/socket/eventReceiver/eventReceiver.ixx
 )
