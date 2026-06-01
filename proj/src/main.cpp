@@ -1,3 +1,4 @@
+  /*
 import core.scheduler;
 import app.context;
 import app.tasks;
@@ -37,7 +38,56 @@ int main() {
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
         return 1;
-    }
+    } */
 
-    return 0;
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QThread>
+
+#include "qt/Backend.h"
+#include "qt/EventReceiver.h"
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+
+    QQmlApplicationEngine engine;
+
+    Backend backend;
+    engine.rootContext()->setContextProperty("backend", &backend);
+
+    EventReceiver *receiver = new EventReceiver;
+    QThread *thread = new QThread;
+
+    receiver->moveToThread(thread);
+
+    QObject::connect(receiver, &EventReceiver::waypointsReceived,
+                     &backend, &Backend::waypointsReceived);
+
+    QObject::connect(receiver, &EventReceiver::graphUpdate,
+                     &backend, &Backend::graphEdgeUpdated);
+
+    QObject::connect(thread, &QThread::started,
+                     receiver, [=]() {
+        receiver->run(12345);
+    });
+
+    QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                     receiver, &EventReceiver::stop);
+
+    QObject::connect(&app, &QCoreApplication::aboutToQuit,
+                     thread, &QThread::quit);
+
+    QObject::connect(thread, &QThread::finished,
+                     receiver, &QObject::deleteLater);
+
+    engine.loadFromModule("QTmap", "Main");
+
+    if (engine.rootObjects().isEmpty())
+        return -1;
+
+    thread->start();
+
+    return app.exec();
 }

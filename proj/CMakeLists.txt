@@ -1,23 +1,60 @@
 cmake_minimum_required(VERSION 3.28)
-project(rts_proj LANGUAGES CXX)
+project(QTmap_RTS LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
+# Qt
+find_package(Qt6 REQUIRED COMPONENTS Quick Location Positioning)
+
+qt_standard_project_setup(REQUIRES 6.10)
+
+# zewnętrzna biblioteka
 find_package(simdjson REQUIRED)
 
-add_executable(rts_proj
-    src/main.cpp
+# --------------------------------------------------
+# SOURCES (C++ core + Qt backend)
+# --------------------------------------------------
+set(SOURCES
+        src/main.cpp
+        src/qt/Backend.cpp
+        src/qt/EventReceiver.cpp
+        src/qt/EventReceiver.h
 )
 
-target_sources(rts_proj
-    PRIVATE
-        src/main.cpp
+set(HEADERS
+        src/qt/Backend.h
+        src/qt/EventReceiver.cpp
+        src/qt/EventReceiver.h
+)
 
-    PRIVATE
+# --------------------------------------------------
+# EXECUTABLE (JEDEN)
+# --------------------------------------------------
+qt_add_executable(appQTmap
+        ${SOURCES}
+        ${HEADERS}
+)
+
+# --------------------------------------------------
+# QML MODULE
+# --------------------------------------------------
+qt_add_qml_module(appQTmap
+        URI QTmap
+        VERSION 1.0
+        QML_FILES
+        qml/Main.qml
+)
+
+# --------------------------------------------------
+# C++20 MODULES (RTS SYSTEM)
+# --------------------------------------------------
+target_sources(appQTmap
+        PRIVATE
         FILE_SET CXX_MODULES FILES
 
         src/core/time/time.ixx
@@ -38,4 +75,13 @@ target_sources(rts_proj
         src/socket/eventReceiver/eventReceiver.ixx
 )
 
-target_link_libraries(rts_proj PRIVATE simdjson::simdjson)
+# --------------------------------------------------
+# LINKING
+# --------------------------------------------------
+target_link_libraries(appQTmap
+        PRIVATE
+        Qt6::Quick
+        Qt6::Location
+        Qt6::Positioning
+        simdjson::simdjson
+)
