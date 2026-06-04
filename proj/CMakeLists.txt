@@ -22,14 +22,12 @@ find_package(simdjson REQUIRED)
 set(SOURCES
         src/main.cpp
         src/qt/Backend.cpp
-        src/qt/EventReceiver.cpp
-        src/qt/EventReceiver.h
+        src/qt/TcpReceiver.cpp
 )
 
 set(HEADERS
         src/qt/Backend.h
-        src/qt/EventReceiver.cpp
-        src/qt/EventReceiver.h
+        src/qt/TcpReceiver.h
 )
 
 # --------------------------------------------------

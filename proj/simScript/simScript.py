@@ -262,7 +262,7 @@ def main():
     parser.add_argument("--points", "-n", type=int, default=5)
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=12345)
-    parser.add_argument("--interval", type=float, default=0.01)
+    parser.add_argument("--interval", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--server-timeout", type=float, default=30.0,
                         help="Max seconds to wait for RTS server")
@@ -287,18 +287,16 @@ def main():
 
     try:
         while True:
-        # for edge in edges:
             time.sleep(args.interval)
             edge = random.choice(edges)
-            u, v, data = edge
+            u, v = edge
             new_weight = random.uniform(1.0, 30.0)
             send_message(sock, {
                 "type": "graph_update",
                 "edge": [u, v],
-                "new_weight": new_weight,
-                "geometry": data["geometry"]
+                "new_weight": new_weight
             })
-            # print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
+            print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
     except KeyboardInterrupt:
         print("Stopped.")
     finally:
