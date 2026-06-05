@@ -56,7 +56,7 @@ void Backend::onWaypointsReceived(const QVariantList &points) {
         qDebug() << "[Backend] First element type:" << points.first().typeName()
                  << "value:" << points.first();
     }
-    auto *coords = new std::vector<std::pair<double, double>>;
+    auto coords = std::make_unique<std::vector<std::pair<double,double>>>();
     for (const auto &p : points) {
         auto list = p.toList();
         if (list.size() < 2) {
@@ -67,7 +67,7 @@ void Backend::onWaypointsReceived(const QVariantList &points) {
     }
     Event e;
     e.type = EventType::RouteNodesUpdate;
-    e.data = coords;
+    e.data = coords.release();
     d->scheduler.getEventQueue().push(e);
 }
 

@@ -174,6 +174,7 @@ NavGraph::NavGraph(const std::string& nav_path) {
     // Copy CSR arrays into vectors for easier access (optional, but convenient)
     edge_offsets_.assign(edge_offsets_ptr_, edge_offsets_ptr_ + node_count_ + 1);
     edge_targets_.assign(edge_targets_ptr_, edge_targets_ptr_ + edge_count_);
+    edge_weights_.assign(edge_weights_ptr_, edge_weights_ptr_ + edge_count_);
 }
 
 NavGraph::NavGraph() = default;
