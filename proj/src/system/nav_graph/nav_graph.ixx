@@ -80,9 +80,7 @@ private:
     const double* edge_weights_ptr_ = nullptr;
 
     // Edge map (sorted by u, then v) – stored as three parallel arrays
-    const uint32_t* edge_map_u_ = nullptr;
-    const uint32_t* edge_map_v_ = nullptr;
-    const uint32_t* edge_map_idx_ = nullptr;
+    const uint32_t* edge_map_base_ = nullptr;
     uint64_t edge_map_count_ = 0;
 
     // Spatial grid
@@ -102,7 +100,7 @@ private:
     // Helper to copy data into local vectors for safe access
     std::vector<uint32_t> edge_offsets_;
     std::vector<uint32_t> edge_targets_;
-    std::vector<uint32_t> edge_weights_;
+    std::vector<double> edge_weights_;  
     // We keep the pointers also available; vectors are for range loops etc.
 };
 
@@ -130,9 +128,9 @@ NavGraph::NavGraph(const std::string& nav_path) {
 
     const uint8_t* ptr = static_cast<const uint8_t*>(mapped_data_);
     uint32_t magic, version;
-    std::memcpy(&magic, ptr, 4); ptr += 4;
+    std::memcpy(&magic,   ptr, 4); ptr += 4;
     std::memcpy(&version, ptr, 4); ptr += 4;
-    static constexpr uint32_t MAGIC = 0x5254534E; // "RT SN"
+    static constexpr uint32_t MAGIC   = 0x5254534E;
     static constexpr uint32_t VERSION = 2;
     if (magic != MAGIC || version != VERSION) {
         unmap();
@@ -142,38 +140,37 @@ NavGraph::NavGraph(const std::string& nav_path) {
     std::memcpy(&node_count_, ptr, 8); ptr += 8;
     std::memcpy(&edge_count_, ptr, 8); ptr += 8;
 
-    std::memcpy(&min_lat_, ptr, 8); ptr += 8;
-    std::memcpy(&max_lat_, ptr, 8); ptr += 8;
-    std::memcpy(&min_lon_, ptr, 8); ptr += 8;
-    std::memcpy(&max_lon_, ptr, 8); ptr += 8;
-
-    std::memcpy(&cell_size_, ptr, 8); ptr += 8;
-    std::memcpy(&grid_width_, ptr, 4); ptr += 4;
+    std::memcpy(&min_lat_,     ptr, 8); ptr += 8;
+    std::memcpy(&max_lat_,     ptr, 8); ptr += 8;
+    std::memcpy(&min_lon_,     ptr, 8); ptr += 8;
+    std::memcpy(&max_lon_,     ptr, 8); ptr += 8;
+    std::memcpy(&cell_size_,   ptr, 8); ptr += 8;
+    std::memcpy(&grid_width_,  ptr, 4); ptr += 4;
     std::memcpy(&grid_height_, ptr, 4); ptr += 4;
 
     node_osm_ids_ = reinterpret_cast<const uint64_t*>(ptr); ptr += node_count_ * 8;
-    lats_ = reinterpret_cast<const double*>(ptr); ptr += node_count_ * 8;
-    lons_ = reinterpret_cast<const double*>(ptr); ptr += node_count_ * 8;
+    lats_         = reinterpret_cast<const double*>(ptr);   ptr += node_count_ * 8;
+    lons_         = reinterpret_cast<const double*>(ptr);   ptr += node_count_ * 8;
 
     edge_offsets_ptr_ = reinterpret_cast<const uint32_t*>(ptr); ptr += (node_count_ + 1) * 4;
     edge_targets_ptr_ = reinterpret_cast<const uint32_t*>(ptr); ptr += edge_count_ * 4;
-    edge_weights_ptr_ = reinterpret_cast<const double*>(ptr); ptr += edge_count_ * 8;
+    edge_weights_ptr_ = reinterpret_cast<const double*>(ptr);   ptr += edge_count_ * 8;
 
-    // Edge map: each entry = (u, v, idx) interleaved as uint32_t
-    edge_map_u_ = reinterpret_cast<const uint32_t*>(ptr);
-    edge_map_v_ = edge_map_u_ + 1;
-    edge_map_idx_ = edge_map_u_ + 2;
+    // FIX 1: edge_map is stride-3 interleaved [u, v, idx, ...].
+    // Store only one base pointer; stride is handled in find_edge_index.
+    edge_map_base_  = reinterpret_cast<const uint32_t*>(ptr);
     edge_map_count_ = edge_count_;
     ptr += edge_count_ * 3 * 4;
 
-    uint64_t num_cells = static_cast<uint64_t>(grid_width_) * grid_height_;
+    uint64_t num_cells    = static_cast<uint64_t>(grid_width_) * grid_height_;
     cell_offsets_ptr_ = reinterpret_cast<const uint32_t*>(ptr); ptr += (num_cells + 1) * 4;
-    cell_nodes_ptr_ = reinterpret_cast<const uint32_t*>(ptr); ptr += node_count_ * 4;
+    cell_nodes_ptr_   = reinterpret_cast<const uint32_t*>(ptr); ptr += node_count_ * 4;
     cell_nodes_count_ = node_count_;
 
-    // Copy CSR arrays into vectors for easier access (optional, but convenient)
+    // FIX 2: copy all three CSR arrays into vectors.
     edge_offsets_.assign(edge_offsets_ptr_, edge_offsets_ptr_ + node_count_ + 1);
     edge_targets_.assign(edge_targets_ptr_, edge_targets_ptr_ + edge_count_);
+    // FIX 3: correct type is double, not uint32_t.
     edge_weights_.assign(edge_weights_ptr_, edge_weights_ptr_ + edge_count_);
 }
 
@@ -192,9 +189,7 @@ NavGraph::NavGraph(NavGraph&& other) noexcept
       edge_offsets_ptr_(other.edge_offsets_ptr_),
       edge_targets_ptr_(other.edge_targets_ptr_),
       edge_weights_ptr_(other.edge_weights_ptr_),
-      edge_map_u_(other.edge_map_u_),
-      edge_map_v_(other.edge_map_v_),
-      edge_map_idx_(other.edge_map_idx_),
+      edge_map_base_(other.edge_map_base_),      // renamed from three pointers
       edge_map_count_(other.edge_map_count_),
       min_lat_(other.min_lat_),
       max_lat_(other.max_lat_),
@@ -210,7 +205,9 @@ NavGraph::NavGraph(NavGraph&& other) noexcept
       edge_count_(other.edge_count_),
       weight_overrides_(std::move(other.weight_overrides_)),
       edge_offsets_(std::move(other.edge_offsets_)),
-      edge_targets_(std::move(other.edge_targets_)) {
+      edge_targets_(std::move(other.edge_targets_)),
+      edge_weights_(std::move(other.edge_weights_))   // was missing entirely
+{
     other.mapped_data_ = nullptr;
     other.mapped_size_ = 0;
 }
@@ -218,33 +215,32 @@ NavGraph::NavGraph(NavGraph&& other) noexcept
 NavGraph& NavGraph::operator=(NavGraph&& other) noexcept {
     if (this != &other) {
         unmap();
-        mapped_data_ = other.mapped_data_;
-        mapped_size_ = other.mapped_size_;
-        node_osm_ids_ = other.node_osm_ids_;
-        lats_ = other.lats_;
-        lons_ = other.lons_;
+        mapped_data_      = other.mapped_data_;
+        mapped_size_      = other.mapped_size_;
+        node_osm_ids_     = other.node_osm_ids_;
+        lats_             = other.lats_;
+        lons_             = other.lons_;
         edge_offsets_ptr_ = other.edge_offsets_ptr_;
         edge_targets_ptr_ = other.edge_targets_ptr_;
         edge_weights_ptr_ = other.edge_weights_ptr_;
-        edge_map_u_ = other.edge_map_u_;
-        edge_map_v_ = other.edge_map_v_;
-        edge_map_idx_ = other.edge_map_idx_;
-        edge_map_count_ = other.edge_map_count_;
-        min_lat_ = other.min_lat_;
-        max_lat_ = other.max_lat_;
-        min_lon_ = other.min_lon_;
-        max_lon_ = other.max_lon_;
-        cell_size_ = other.cell_size_;
-        grid_width_ = other.grid_width_;
-        grid_height_ = other.grid_height_;
+        edge_map_base_    = other.edge_map_base_;     // renamed
+        edge_map_count_   = other.edge_map_count_;
+        min_lat_          = other.min_lat_;
+        max_lat_          = other.max_lat_;
+        min_lon_          = other.min_lon_;
+        max_lon_          = other.max_lon_;
+        cell_size_        = other.cell_size_;
+        grid_width_       = other.grid_width_;
+        grid_height_      = other.grid_height_;
         cell_offsets_ptr_ = other.cell_offsets_ptr_;
-        cell_nodes_ptr_ = other.cell_nodes_ptr_;
+        cell_nodes_ptr_   = other.cell_nodes_ptr_;
         cell_nodes_count_ = other.cell_nodes_count_;
-        node_count_ = other.node_count_;
-        edge_count_ = other.edge_count_;
+        node_count_       = other.node_count_;
+        edge_count_       = other.edge_count_;
         weight_overrides_ = std::move(other.weight_overrides_);
-        edge_offsets_ = std::move(other.edge_offsets_);
-        edge_targets_ = std::move(other.edge_targets_);
+        edge_offsets_     = std::move(other.edge_offsets_);
+        edge_targets_     = std::move(other.edge_targets_);
+        edge_weights_     = std::move(other.edge_weights_);  // was missing
         other.mapped_data_ = nullptr;
         other.mapped_size_ = 0;
     }
@@ -278,22 +274,24 @@ void NavGraph::update_edge_weight_by_index(uint32_t edge_idx, double new_weight)
 }
 
 std::optional<uint32_t> NavGraph::find_edge_index(uint32_t u_idx, uint32_t v_idx) const noexcept {
-    int64_t left = 0, right = static_cast<int64_t>(edge_map_count_) - 1;
+    int64_t left  = 0;
+    int64_t right = static_cast<int64_t>(edge_map_count_) - 1;
     while (left <= right) {
-        int64_t mid = (left + right) / 2;
-        uint32_t cur_u = edge_map_u_[mid];
+        int64_t mid   = (left + right) / 2;
+        uint32_t cur_u   = edge_map_base_[mid * 3 + 0];
+        uint32_t cur_v   = edge_map_base_[mid * 3 + 1];
+        uint32_t cur_idx = edge_map_base_[mid * 3 + 2];
         if (cur_u < u_idx) {
             left = mid + 1;
         } else if (cur_u > u_idx) {
             right = mid - 1;
         } else {
-            uint32_t cur_v = edge_map_v_[mid];
             if (cur_v < v_idx) {
                 left = mid + 1;
             } else if (cur_v > v_idx) {
                 right = mid - 1;
             } else {
-                return edge_map_idx_[mid];
+                return cur_idx;
             }
         }
     }

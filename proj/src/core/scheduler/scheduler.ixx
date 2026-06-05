@@ -16,7 +16,9 @@ import system.config;
 export template<typename Context, size_t MaxTasks, size_t QueueSize>
 class Scheduler {
 public:
-    Scheduler(Context& ctx) : context(ctx) {}
+    Scheduler(Context& ctx) : context(ctx) {
+        context.queue=&queue;
+    }
 
     // Add a periodic or one‑shot task (period == 0 means one‑shot)
     void addTask(const Task<Context>& task) {

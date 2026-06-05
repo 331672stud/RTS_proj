@@ -28,49 +28,56 @@ struct AStarResult {
 };
 
 export AStarResult a_star(const NavGraph& graph, uint32_t start, uint32_t goal,
-                   double max_cost = std::numeric_limits<double>::infinity(),
-                   double max_distance_m = std::numeric_limits<double>::infinity()) {
+                   double max_cost=std::numeric_limits<double>::infinity(),
+                   double max_distance_m=std::numeric_limits<double>::infinity())
+{
     struct NodeState {
         uint32_t id;
-        double g;     // cost from start
-        double f;     // g + heuristic
-        uint32_t parent;
+        double   g;       // cost from start
+        double   f;       // g + heuristic
+        uint32_t parent;  // UINT32_MAX means "no parent" (start node)
         bool operator>(const NodeState& other) const { return f > other.f; }
     };
+
     std::unordered_map<uint32_t, NodeState> best;
     std::priority_queue<NodeState, std::vector<NodeState>, std::greater<>> open;
 
-    best[start] = {start, 0.0, distance_between(graph, start, goal), 0};
+    // Start node: parent is UINT32_MAX (sentinel — not a valid index).
+    best[start] = {start, 0.0, distance_between(graph, start, goal), UINT32_MAX};
     open.push(best[start]);
 
     while (!open.empty()) {
         NodeState cur = open.top(); open.pop();
+
         if (cur.id == goal) {
-            // Reconstruct path
+            // Reconstruct path by walking parents back to the start sentinel.
             std::vector<uint32_t> path;
             uint32_t n = cur.id;
-            while (n != 0) {
+            while (n != UINT32_MAX) {
                 path.push_back(n);
                 n = best[n].parent;
             }
             std::reverse(path.begin(), path.end());
             return {path, cur.g};
         }
+
+        // Skip stale entries (we may have pushed the same node multiple times).
+        auto it_cur = best.find(cur.id);
+        if (it_cur == best.end() || cur.g > it_cur->second.g) continue;
+
         if (cur.g > max_cost) continue;
-        // Check distance from start to goal in meters – if exceeded, stop expansion? Actually we check after expansion.
-        // For local replan, we may prune if node is too far from start.
         if (distance_between(graph, start, cur.id) > max_distance_m) continue;
 
-        // Iterate over outgoing edges
         uint32_t offset_start = graph.edge_offset(cur.id);
-        uint32_t offset_end = graph.edge_offset(cur.id + 1);
+        uint32_t offset_end   = graph.edge_offset(cur.id + 1);
         for (uint32_t i = offset_start; i < offset_end; ++i) {
-            uint32_t next = graph.edge_target(i);
-            double edge_weight = graph.current_edge_weight(i);
-            double new_g = cur.g + edge_weight;
+            uint32_t next       = graph.edge_target(i);
+            double   edge_w     = graph.current_edge_weight(i);
+            double   new_g      = cur.g + edge_w;
+
             auto it = best.find(next);
             if (it == best.end() || new_g < it->second.g) {
-                double h = distance_between(graph, next, goal) / VEHICLE_SPEED_MS; // time heuristic
+                double h  = distance_between(graph, next, goal) / VEHICLE_SPEED_MS;
                 NodeState ns = {next, new_g, new_g + h, cur.id};
                 best[next] = ns;
                 open.push(ns);

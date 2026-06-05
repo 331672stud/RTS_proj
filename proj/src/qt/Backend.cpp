@@ -35,9 +35,10 @@ Backend::Backend(QObject *parent)
              << d->ctx.graph.edge_count() << "edges";
 
     connect(&d->tickTimer, &QTimer::timeout, this, [this]() {
-        d->scheduler.tick();
-        updateRouteGeometry();
-    });
+    d->scheduler.tick();
+    updateRouteGeometry();
+    updateVehicleState();   // NEW
+});
 }
 
 Backend::~Backend() = default;
@@ -106,22 +107,27 @@ static uint32_t findNodeIndexByOsm(const NavGraph& graph, uint64_t osm_id) {
 }
 
 // ---- Slot for raw JSON ----
-void Backend::onWaypointsJson(const QString &json) {
+void Backend::onWaypointsJson(const QString& json) {
     simdjson::dom::parser parser;
     simdjson::dom::element doc;
     auto error = parser.parse(json.toStdString()).get(doc);
     if (error) {
         qWarning() << "Failed to parse waypoints JSON";
-        return;
-    }
-    simdjson::dom::array coords_array;
-    if (doc["coordinates"].get_array().get(coords_array)) {
-        qWarning() << "Missing 'coordinates' array";
+        emit simulationError("Failed to parse waypoints JSON");
         return;
     }
 
-    auto* coords = new std::vector<std::pair<double, double>>;
-    QVariantList qmlPoints;                     // for QML
+    simdjson::dom::array coords_array;
+    if (doc["coordinates"].get_array().get(coords_array)) {
+        qWarning() << "Missing 'coordinates' array";
+        emit simulationError("Waypoint JSON missing 'coordinates' array");
+        return;
+        // NOTE: no coords pointer exists yet at this point, so no leak here.
+    }
+
+    // Use unique_ptr so any early return below cannot leak.
+    auto coords  = std::make_unique<std::vector<std::pair<double, double>>>();
+    QVariantList qmlPoints;
 
     for (auto point : coords_array) {
         double lat, lon;
@@ -137,36 +143,60 @@ void Backend::onWaypointsJson(const QString &json) {
         qmlPoints.append(m);
     }
 
-    emit waypointsReceived(qmlPoints);          // ← let QML update pointModel
+    emit waypointsReceived(qmlPoints); // let QML update pointModel
 
-    Event e;
-    e.type = EventType::RouteNodesUpdate;
-    e.data = coords;
-    d->scheduler.getEventQueue().push(e);
+    // Marshal the push onto the main thread via a queued invocation.
+    // raw_coords is the raw pointer; ownership passes to the event consumer
+    // (onRouteNodesUpdate), which is responsible for deleting it.
+    auto* raw_coords = coords.release();
 
-    qDebug() << "[Backend] Pushed" << coords->size() << "waypoints into event queue";
+    QMetaObject::invokeMethod(this, [this, raw_coords]() {
+        Event e;
+        e.type = EventType::RouteNodesUpdate;
+        e.data = raw_coords;
+        d->scheduler.getEventQueue().push(e);
+    }, Qt::QueuedConnection);
+
+    qDebug() << "[Backend] Queued" << (raw_coords ? raw_coords->size() : 0)
+             << "waypoints into event queue";
 }
 
 // ---- Slot for edge updates (kept for QML visualisation) ----
 void Backend::onGraphEdgeUpdated(uint64_t osm_u, uint64_t osm_v, double newWeight) {
-    try {
-        uint32_t uIdx = findNodeIndexByOsm(d->ctx.graph, osm_u);
-        uint32_t vIdx = findNodeIndexByOsm(d->ctx.graph, osm_v);
+    QMetaObject::invokeMethod(this, [this, osm_u, osm_v, newWeight]() {
+        try {
+            uint32_t uIdx = findNodeIndexByOsm(d->ctx.graph, osm_u);
+            uint32_t vIdx = findNodeIndexByOsm(d->ctx.graph, osm_v);
 
-        d->ctx.graph.update_edge_weight(uIdx, vIdx, newWeight);
+            d->ctx.graph.update_edge_weight(uIdx, vIdx, newWeight);
 
-        double lat1 = d->ctx.graph.node_lat(uIdx);
-        double lon1 = d->ctx.graph.node_lon(uIdx);
-        double lat2 = d->ctx.graph.node_lat(vIdx);
-        double lon2 = d->ctx.graph.node_lon(vIdx);
-        emit graphEdgeUpdated(osm_u, osm_v, newWeight, lat1, lon1, lat2, lon2);
+            double lat1 = d->ctx.graph.node_lat(uIdx);
+            double lon1 = d->ctx.graph.node_lon(uIdx);
+            double lat2 = d->ctx.graph.node_lat(vIdx);
+            double lon2 = d->ctx.graph.node_lon(vIdx);
+            emit graphEdgeUpdated(osm_u, osm_v, newWeight, lat1, lon1, lat2, lon2);
 
-        // Optionally trigger a local replan
-        Event e;
-        e.type = EventType::LocalReplanRequest;
-        e.data = nullptr;
-        d->scheduler.getEventQueue().push(e);
-    } catch (const std::exception &ex) {
-        qWarning() << "Graph update failed:" << ex.what();
+            Event e;
+            e.type = EventType::LocalReplanRequest;
+            e.data = nullptr;
+            d->scheduler.getEventQueue().push(e);
+        } catch (const std::exception& ex) {
+            qWarning() << "Graph update failed:" << ex.what();
+            emit simulationError(QString("Graph update failed: %1").arg(ex.what()));
+        }
+    }, Qt::QueuedConnection);
+}
+
+void Backend::updateVehicleState() {
+    const auto& v = d->ctx.vehicle;
+    emit vehiclePositionChanged(v.lat, v.lon, v.heading, v.speed_ms);
+
+    // Detect start-node change and emit once per new origin.
+    uint32_t current_start = d->ctx.start_node;
+    if (current_start != m_lastEmittedStartNode) {
+        m_lastEmittedStartNode = current_start;
+        double lat = d->ctx.graph.node_lat(current_start);
+        double lon = d->ctx.graph.node_lon(current_start);
+        emit startNodeChanged(lat, lon);
     }
 }
