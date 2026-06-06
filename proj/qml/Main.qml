@@ -8,6 +8,12 @@ Window {
     visible: true
     title: qsTr("RTS_NAV")
 
+    property real vehicleLat: 52.23
+    property real vehicleLon: 21.0
+    property real vehicleHeading: 0.0
+    property real mapCenterLat: 52.23
+    property real mapCenterLon: 21.0
+
     ListModel { id: edgeModel }
     ListModel { id: pointModel }
 
@@ -69,8 +75,8 @@ Window {
         }
 
         activeMapType: map.supportedMapTypes[map.supportedMapTypes.length - 1]
-        center: QtPositioning.coordinate(52.23, 21)
-        zoomLevel: 11
+        center: QtPositioning.coordinate(mapCenterLat, mapCenterLon)
+        zoomLevel: 14
 
         // ----- waypoints (blue circles) -----
         MapItemView {
@@ -95,6 +101,21 @@ Window {
                     QtPositioning.coordinate(lat1, lon1),
                     QtPositioning.coordinate(lat2, lon2)
                 ]
+            }
+        }
+
+        // ----- current vehicle position (red) -----
+        MapQuickItem {
+            coordinate: QtPositioning.coordinate(vehicleLat, vehicleLon)
+            anchorPoint.x: 8
+            anchorPoint.y: 8
+            sourceItem: Rectangle {
+                width: 16
+                height: 16
+                radius: 8
+                color: "red"
+                border.width: 2
+                border.color: "white"
             }
         }
 
@@ -123,6 +144,18 @@ Window {
             for (const p of points) {
                 pointModel.append({ "lat": p.lat, "lon": p.lon })
             }
+        }
+
+        function onVehiclePositionChanged(lat, lon, heading, speedMs) {
+            console.log("onVehiclePositionChanged", lat, lon, heading, speedMs)
+            vehicleLat = lat
+            vehicleLon = lon
+            vehicleHeading = heading
+        }
+
+        function onStartNodeChanged(lat, lon) {
+            mapCenterLat = lat
+            mapCenterLon = lon
         }
 
         function onGraphEdgeUpdated(u, v, weight, lat1, lon1, lat2, lon2) {

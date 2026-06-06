@@ -1,8 +1,8 @@
 Warsaw*
 .idea
-*/build
+*build
 */cmake-build-debug
-*/.vscode
+*.vscode
 */.cache
 */bin
 .devcontainer

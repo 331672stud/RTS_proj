@@ -46,10 +46,12 @@ signals:
 private:
     void updateRouteGeometry();
     void updateVehicleState();   // NEW — emits vehiclePositionChanged / startNodeChanged
+    void updateWaypointsModel(); // NEW — emit updated waypoints to QML
 
     uint32_t m_lastEmittedStartNode = UINT32_MAX;
 
     struct Impl;
     std::unique_ptr<Impl> d;
     QVariantList m_routePath;
+    QVariantList m_waypoints;
 };

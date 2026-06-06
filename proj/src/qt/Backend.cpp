@@ -21,15 +21,15 @@ struct Backend::Impl {
     Impl(const std::string &navFile)
         : ctx(NavGraph(navFile)), scheduler(ctx)
     {
-        scheduler.addTask({taskSamplePosition,      PRIORITY_HIGH, 10,  0});
-        scheduler.addTask({taskNavigationState,     PRIORITY_HIGH, 50, 10});
+        scheduler.addTask({taskSamplePosition,      PRIORITY_HIGH, 5,   0});
+        scheduler.addTask({taskNavigationState,     PRIORITY_HIGH, 20, 10});
         scheduler.addTask({taskPeriodicRouteCheck,  PRIORITY_HIGH, 30,  5});
         scheduler.addTask({taskWatchdog,            PRIORITY_HIGH, 50, 15});
     }
 };
 
 Backend::Backend(QObject *parent)
-    : QObject(parent), d(std::make_unique<Impl>("../simScript/maps/Warsaw.nav"))
+    : QObject(parent), d(std::make_unique<Impl>("../proj/simScript/maps/Warsaw.nav"))
 {
     qDebug() << "Graph loaded:" << d->ctx.graph.node_count() << "nodes,"
              << d->ctx.graph.edge_count() << "edges";
@@ -90,6 +90,22 @@ void Backend::updateRouteGeometry() {
     if (path != m_routePath) {
         m_routePath = std::move(path);
         emit routeChanged();
+    }
+}
+
+void Backend::updateWaypointsModel() {
+    QVariantList pts;
+    pts.reserve(d->ctx.waypoint_nodes.size());
+    for (uint32_t idx : d->ctx.waypoint_nodes) {
+        QVariantMap m;
+        m["lat"] = d->ctx.graph.node_lat(idx);
+        m["lon"] = d->ctx.graph.node_lon(idx);
+        pts.append(m);
+    }
+
+    if (pts != m_waypoints) {
+        m_waypoints = std::move(pts);
+        emit waypointsReceived(m_waypoints);
     }
 }
 
@@ -189,6 +205,11 @@ void Backend::onGraphEdgeUpdated(uint64_t osm_u, uint64_t osm_v, double newWeigh
 
 void Backend::updateVehicleState() {
     const auto& v = d->ctx.vehicle;
+    qDebug() << "[Backend] emit vehiclePositionChanged:"
+             << QString::number(v.lat, 'f', 8)
+             << QString::number(v.lon, 'f', 8)
+             << "heading=" << QString::number(v.heading, 'f', 6)
+             << "speed=" << QString::number(v.speed_ms, 'f', 2);
     emit vehiclePositionChanged(v.lat, v.lon, v.heading, v.speed_ms);
 
     // Detect start-node change and emit once per new origin.
@@ -199,4 +220,7 @@ void Backend::updateVehicleState() {
         double lon = d->ctx.graph.node_lon(current_start);
         emit startNodeChanged(lat, lon);
     }
+
+    // Also refresh waypoint model so UI removes reached waypoints.
+    updateWaypointsModel();
 }

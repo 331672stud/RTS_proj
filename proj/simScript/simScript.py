@@ -285,22 +285,22 @@ def main():
     send_message(sock, {"type": "waypoints", "coordinates": waypoints})
     print("Waypoints sent.")
 
-    try:
-        while True:
-            time.sleep(args.interval)
-            edge = random.choice(edges)
-            u, v = edge
-            new_weight = random.uniform(1.0, 30.0)
-            send_message(sock, {
-                "type": "graph_update",
-                "edge": [u, v],
-                "new_weight": new_weight
-            })
-            print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
-    except KeyboardInterrupt:
-        print("Stopped.")
-    finally:
-        sock.close()
+    # try:
+    #     while True:
+    #         time.sleep(args.interval)
+    #         edge = random.choice(edges)
+    #         u, v = edge
+    #         new_weight = random.uniform(1.0, 30.0)
+    #         send_message(sock, {
+    #             "type": "graph_update",
+    #             "edge": [u, v],
+    #             "new_weight": new_weight
+    #         })
+    #         print(f"Sent update: edge ({u},{v}) -> {new_weight:.1f}s")
+    # except KeyboardInterrupt:
+    #     print("Stopped.")
+    # finally:
+    #     sock.close()
 
 if __name__ == "__main__":
     main()

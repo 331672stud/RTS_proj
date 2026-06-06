@@ -11,7 +11,7 @@ export module app.astar;
 
 import system.nav_graph;
 
-static constexpr double VEHICLE_SPEED_MS = 14;
+static constexpr double VEHICLE_SPEED_MS = 50.0;
 
 double distance_between(const NavGraph& graph, uint32_t a, uint32_t b) {
     double dx = graph.node_lon(a) - graph.node_lon(b);

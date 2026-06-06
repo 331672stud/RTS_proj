@@ -1,6 +1,7 @@
 module;
 
 #include <array>
+#include <iostream>
 #include <stdexcept>
 
 export module core.scheduler;
@@ -23,15 +24,22 @@ public:
     // Add a periodic or one‑shot task (period == 0 means one‑shot)
     void addTask(const Task<Context>& task) {
         if (task_count >= MaxTasks) {
-            throw std::runtime_error("Maximum number of tasks reached");
+            std::cerr << "[Scheduler] task capacity reached, dropping task" << std::endl;
+            return;
         }
         tasks[task_count] = task;
         tasks[task_count].next_run = current_tick + (task.period > 0 ? task.period : 0);
         ++task_count;
     }
 
-    // Convenience method for one‑shot tasks
+    // Convenience method for one‑shot tasks.
     void addOneShotTask(void (*func)(Context&)) {
+        for (size_t i = 0; i < task_count; ++i) {
+            auto& t = tasks[i];
+            if (t.period == 0 && t.func == func) {
+                return;
+            }
+        }
         Task<Context> t{func, PRIORITY_HIGH, 0, 0};
         addTask(t);
     }

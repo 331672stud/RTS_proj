@@ -66,8 +66,8 @@ export void onRouteNodesUpdate(TaskContext& ctx,
     ctx.waypoint_nodes = std::move(waypoint_nodes);
 
     ctx.vehicle.current_node = start_node;
-    ctx.vehicle.lat          = start_lat;
-    ctx.vehicle.lon          = start_lon;
+    ctx.vehicle.lat          = ctx.graph.node_lat(start_node);
+    ctx.vehicle.lon          = ctx.graph.node_lon(start_node);
     ctx.vehicle.heading      = 0.0;
     ctx.vehicle.speed_ms     = 0.0;
 
