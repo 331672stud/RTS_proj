@@ -262,7 +262,7 @@ def main():
     parser.add_argument("--points", "-n", type=int, default=5)
     parser.add_argument("--host", default="localhost")
     parser.add_argument("--port", type=int, default=12345)
-    parser.add_argument("--interval", type=float, default=0.1)
+    parser.add_argument("--interval", type=float, default=1)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--server-timeout", type=float, default=30.0,
                         help="Max seconds to wait for RTS server")

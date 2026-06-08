@@ -1,7 +1,7 @@
 #pragma once
 #include <QObject>
-#include <cstdint>
-#include <QString>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 class TcpReceiver : public QObject
 {
@@ -10,16 +10,21 @@ public:
     explicit TcpReceiver(QObject *parent = nullptr);
 
 public slots:
-    void run(int port);
-    void stop();
+    void startServer(int port);
+    void stopServer();
 
-    signals:
-        // Raw JSON line for waypoints (the backend will parse it)
-        void waypointsJson(const QString &json);
-
-    // Edge weight update – keep this for QML visualisation
+signals:
+    void waypointsJson(const QString &json);
     void graphUpdate(uint64_t u, uint64_t v, double newWeight);
+    void stopped();   // emitted when cleanup is finished
+
+private slots:
+    void onNewConnection();
+    void onReadyRead();
+    void onDisconnected();
 
 private:
-    bool m_running = false;
+    QTcpServer *m_server = nullptr;
+    QTcpSocket *m_clientSocket = nullptr;
+    std::string m_remaining;    // buffer for partial lines
 };

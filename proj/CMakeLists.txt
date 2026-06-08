@@ -70,7 +70,7 @@ target_sources(appQTmap
         src/system/config/config.ixx
         src/system/nav_graph/nav_graph.ixx
 
-        src/socket/eventReceiver/eventReceiver.ixx
+        # src/socket/eventReceiver/eventReceiver.ixx
 )
 
 # --------------------------------------------------

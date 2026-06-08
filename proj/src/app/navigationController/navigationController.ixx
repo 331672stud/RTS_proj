@@ -52,8 +52,8 @@ export void onRouteNodesUpdate(TaskContext& ctx,
     // Generate a random start/return node.
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> lat_dist(ctx.graph.MIN_LAT, ctx.graph.MAX_LAT);
-    std::uniform_real_distribution<double> lon_dist(ctx.graph.MIN_LON, ctx.graph.MAX_LON);
+    std::uniform_real_distribution<double> lat_dist(ctx.graph.min_lat(), ctx.graph.max_lat());
+    std::uniform_real_distribution<double> lon_dist(ctx.graph.min_lon(), ctx.graph.max_lon());
     double start_lat = lat_dist(gen);
     double start_lon = lon_dist(gen);
     uint32_t start_node = ctx.graph.find_nearest_node(start_lat, start_lon);

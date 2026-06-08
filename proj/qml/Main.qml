@@ -13,6 +13,8 @@ Window {
     property real vehicleHeading: 0.0
     property real mapCenterLat: 52.23
     property real mapCenterLon: 21.0
+    property real startMarkerLat: 0
+    property real startMarkerLon: 0
 
     ListModel { id: edgeModel }
     ListModel { id: pointModel }
@@ -118,6 +120,18 @@ Window {
                 border.color: "white"
             }
         }
+        //start node (yellow)
+        MapQuickItem {
+            coordinate: QtPositioning.coordinate(startMarkerLat, startMarkerLon)
+            anchorPoint.x: 8; anchorPoint.y: 8
+            sourceItem: Rectangle {
+                width: 16; height: 16; radius: 8
+                color: "yellow"
+                border.width: 2
+                border.color: "black"
+            }
+        }
+    
 
         // ----- NEW: planned route (green) -----
         MapPolyline {
@@ -156,6 +170,8 @@ Window {
         function onStartNodeChanged(lat, lon) {
             mapCenterLat = lat
             mapCenterLon = lon
+            startMarkerLat = lat       // ADD
+            startMarkerLon = lon       // ADD
         }
 
         function onGraphEdgeUpdated(u, v, weight, lat1, lon1, lat2, lon2) {
